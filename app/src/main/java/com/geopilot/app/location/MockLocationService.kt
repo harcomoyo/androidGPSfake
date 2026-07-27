@@ -1,15 +1,18 @@
 package com.geopilot.app.location
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.geopilot.app.GeoPilotApplication
 import com.geopilot.app.MainActivity
 import com.geopilot.app.R
@@ -45,6 +48,13 @@ class MockLocationService : Service() {
     private fun startSimulation() {
         val config = (application as GeoPilotApplication).simulationPreferences.load()
         if (!config.isValid) {
+            stopSelf()
+            return
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            SimulationState.fail("Precise location permission is required")
             stopSelf()
             return
         }
