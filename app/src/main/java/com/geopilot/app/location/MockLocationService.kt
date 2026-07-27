@@ -51,9 +51,7 @@ class MockLocationService : Service() {
             stopSelf()
             return
         }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!hasLocationPermission()) {
             SimulationState.fail("Precise location permission is required")
             stopSelf()
             return
@@ -81,7 +79,9 @@ class MockLocationService : Service() {
         simulationJob?.cancel()
         simulationJob = null
         scope.launch {
-            runCatching { fusedLocationClient.setMockMode(false).awaitTask() }
+            if (hasLocationPermission()) {
+                runCatching { fusedLocationClient.setMockMode(false).awaitTask() }
+            }
             SimulationState.stop()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -150,6 +150,10 @@ class MockLocationService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
 
     companion object {
         const val ACTION_START = "com.geopilot.app.action.START"
