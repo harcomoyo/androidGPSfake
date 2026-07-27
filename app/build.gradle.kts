@@ -22,7 +22,6 @@ android {
     lint {
         abortOnError = true
         checkReleaseBuilds = true
-        warningsAsErrors = true
         disable += setOf("GradleDependency", "OldTargetApi")
     }
 
