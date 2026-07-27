@@ -1,6 +1,7 @@
 package com.geopilot.app.location
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -45,6 +46,7 @@ class MockLocationService : Service() {
         return START_NOT_STICKY
     }
 
+    @SuppressLint("MissingPermission")
     private fun startSimulation() {
         val config = (application as GeoPilotApplication).simulationPreferences.load()
         if (!config.isValid) {
@@ -75,6 +77,7 @@ class MockLocationService : Service() {
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun stopSimulation() {
         simulationJob?.cancel()
         simulationJob = null
