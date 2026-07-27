@@ -77,7 +77,7 @@ jobs:
           sha256sum GeoPilot-${GITHUB_REF_NAME}-unsigned.apk > GeoPilot-${GITHUB_REF_NAME}-unsigned.apk.sha256
 
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           generate_release_notes: true
           files: |
