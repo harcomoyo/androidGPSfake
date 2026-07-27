@@ -49,6 +49,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -143,7 +144,7 @@ private fun LiveMapScreen(
     if (expanded) {
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1.45f).fillMaxHeight()) {
-                AppHeader(status.running)
+                AppHeader(status)
                 CoordinateCanvas(config, onMapPositionChange, Modifier.weight(1f))
             }
             ControlPanel(
@@ -160,7 +161,7 @@ private fun LiveMapScreen(
         }
     } else {
         Column(Modifier.fillMaxSize()) {
-            AppHeader(status.running)
+            AppHeader(status)
             CoordinateCanvas(config, onMapPositionChange, Modifier.weight(0.9f))
             ControlPanel(
                 config = config,
@@ -178,7 +179,7 @@ private fun LiveMapScreen(
 }
 
 @Composable
-private fun AppHeader(running: Boolean) {
+private fun AppHeader(status: SimulationStatus) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -197,15 +198,28 @@ private fun AppHeader(running: Boolean) {
             Text("Location test workspace", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.weight(1f))
-        StatusPill(if (running) "RUNNING" else "READY", running)
+        StatusPill(
+            label = when {
+                status.starting -> "STARTING"
+                status.running -> "RUNNING"
+                status.error != null -> "ACTION REQUIRED"
+                else -> "READY"
+            },
+            active = status.running || status.starting,
+            error = status.error != null,
+        )
         IconButton(onClick = {}) { Icon(Icons.Outlined.MoreHoriz, "More") }
     }
 }
 
 @Composable
-private fun StatusPill(label: String, active: Boolean) {
+private fun StatusPill(label: String, active: Boolean, error: Boolean) {
     Surface(
-        color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        color = when {
+            error -> MaterialTheme.colorScheme.errorContainer
+            active -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
         shape = CircleShape,
     ) {
         Row(
@@ -214,7 +228,11 @@ private fun StatusPill(label: String, active: Boolean) {
         ) {
             Box(
                 Modifier.size(7.dp).background(
-                    if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    when {
+                        error -> MaterialTheme.colorScheme.error
+                        active -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     CircleShape,
                 ),
             )
@@ -333,29 +351,45 @@ private fun ControlPanel(
         AccuracyControl(config, onConfigChange)
         if (status.error != null) {
             Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(14.dp)) {
-                Text(
-                    status.error,
-                    modifier = Modifier.padding(14.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        status.error,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    OutlinedButton(onClick = onOpenDeveloperSettings) {
+                        Icon(Icons.Outlined.DeveloperMode, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Open Developer options")
+                    }
+                }
             }
         }
         Button(
-            onClick = if (status.running) onStop else onStart,
+            onClick = if (status.running || status.starting) onStop else onStart,
             enabled = config.isValid,
             modifier = Modifier.fillMaxWidth().height(54.dp),
-            colors = if (status.running) ButtonDefaults.buttonColors(
+            colors = if (status.running || status.starting) ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.error,
                 contentColor = MaterialTheme.colorScheme.onError,
             ) else ButtonDefaults.buttonColors(),
         ) {
-            Icon(if (status.running) Icons.Outlined.StopCircle else Icons.Outlined.PlayArrow, null)
+            Icon(if (status.running || status.starting) Icons.Outlined.StopCircle else Icons.Outlined.PlayArrow, null)
             Spacer(Modifier.width(8.dp))
-            Text(if (status.running) "Stop simulation" else "Start simulation")
+            Text(
+                when {
+                    status.starting -> "Cancel startup"
+                    status.running -> "Stop simulation"
+                    else -> "Start simulation"
+                },
+            )
         }
         Text(
-            if (status.running) "Publishing every ${config.updateIntervalMs} ms" else "No test location is being published",
+            when {
+                status.starting -> "Waiting for Android mock-location authorization..."
+                status.running -> "Publishing every ${config.updateIntervalMs} ms"
+                else -> "No test location is being published"
+            },
             modifier = Modifier.align(Alignment.CenterHorizontally),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

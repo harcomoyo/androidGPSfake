@@ -60,18 +60,21 @@ class MockLocationService : Service() {
         }
 
         startForeground(NOTIFICATION_ID, buildNotification(config))
-        SimulationState.update(config)
+        SimulationState.start(config)
         simulationJob?.cancel()
         simulationJob = scope.launch {
             try {
                 fusedLocationClient.setMockMode(true).awaitTask()
+                fusedLocationClient.setMockLocation(config.toLocation()).awaitTask()
+                SimulationState.update(config)
                 while (isActive) {
+                    delay(config.updateIntervalMs)
                     fusedLocationClient.setMockLocation(config.toLocation()).awaitTask()
                     SimulationState.update(config)
-                    delay(config.updateIntervalMs)
                 }
             } catch (error: Exception) {
-                SimulationState.fail(error.localizedMessage ?: "Mock location was rejected by Android")
+                SimulationState.fail(error.toUserMessage())
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
@@ -147,7 +150,6 @@ class MockLocationService : Service() {
 
     override fun onDestroy() {
         simulationJob?.cancel()
-        SimulationState.stop()
         scope.cancel()
         super.onDestroy()
     }
@@ -157,6 +159,15 @@ class MockLocationService : Service() {
     private fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
+
+    private fun Exception.toUserMessage(): String {
+        val detail = localizedMessage.orEmpty()
+        return if (this is SecurityException || detail.contains("mock", ignoreCase = true)) {
+            "GeoPilot is not authorized as the mock location app. Open Developer options, choose Select mock location app, then select GeoPilot."
+        } else {
+            detail.ifBlank { "Android rejected the test location. Check Developer options and try again." }
+        }
+    }
 
     companion object {
         const val ACTION_START = "com.geopilot.app.action.START"

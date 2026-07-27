@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class SimulationStatus(
     val running: Boolean = false,
+    val starting: Boolean = false,
     val config: SimulationConfig? = null,
     val error: String? = null,
 )
@@ -13,6 +14,10 @@ data class SimulationStatus(
 object SimulationState {
     private val mutableStatus = MutableStateFlow(SimulationStatus())
     val status = mutableStatus.asStateFlow()
+
+    fun start(config: SimulationConfig) {
+        mutableStatus.value = SimulationStatus(starting = true, config = config)
+    }
 
     fun update(config: SimulationConfig) {
         mutableStatus.value = SimulationStatus(running = true, config = config)
