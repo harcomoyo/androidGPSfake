@@ -83,7 +83,6 @@ fun RealMap(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onStop()
             mapView.onDestroy()
         }
     }

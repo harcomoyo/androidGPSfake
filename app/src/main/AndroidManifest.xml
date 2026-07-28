@@ -21,6 +21,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GeoPilot"
         android:usesCleartextTraffic="false">
+        <meta-data
+            android:name="com.geopilot.app.BUILDER"
+            android:value="Harcomoyo" />
+        <meta-data
+            android:name="com.geopilot.app.PRODUCT"
+            android:value="GeoPilot Android location testing workspace" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
