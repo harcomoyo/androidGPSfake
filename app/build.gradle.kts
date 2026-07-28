@@ -12,11 +12,23 @@ android {
         applicationId = "com.geopilot.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+    }
+
+    signingConfigs {
+        create("ci") {
+            val keystorePath = providers.gradleProperty("GEOPILOT_KEYSTORE_PATH").orNull
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = providers.gradleProperty("GEOPILOT_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("GEOPILOT_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("GEOPILOT_KEY_PASSWORD").get()
+            }
+        }
     }
 
     lint {
@@ -29,6 +41,9 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            if (providers.gradleProperty("GEOPILOT_KEYSTORE_PATH").isPresent) {
+                signingConfig = signingConfigs.getByName("ci")
+            }
         }
         release {
             isMinifyEnabled = true

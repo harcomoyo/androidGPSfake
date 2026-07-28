@@ -28,7 +28,7 @@ class LocationSearchService(
             val request = Request.Builder()
                 .url("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&countrycodes=id&q=$encodedQuery")
                 .header("User-Agent", "GeoPilot-Android/0.1 (location testing app)")
-                .header("Accept-Language", "id,en;q=0.8")
+                .header("Accept-Language", "en,id;q=0.8")
                 .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) throw IOException("Search service returned ${response.code}")

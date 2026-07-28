@@ -47,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -119,16 +120,27 @@ private fun LiveMapScreen(
     onOpenDeveloperSettings: () -> Unit,
     onRequestPermissions: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
+    var locationError by remember { mutableStateOf<String?>(null) }
     if (expanded) {
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1.45f).fillMaxHeight()) {
                 AppHeader(status)
                 RealMap(
                     config = config,
+                    scope = scope,
                     onPositionChange = onMapPositionChange,
+                    onLocationError = { locationError = it },
                     modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
                 )
                 MapAttribution()
+                LocationSearch(
+                    onLocationSelected = { latitude, longitude ->
+                        onMapPositionChange(latitude, longitude)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                locationError?.let { MapMessage(it) }
             }
             ControlPanel(
                 config = config,
@@ -147,10 +159,19 @@ private fun LiveMapScreen(
             AppHeader(status)
             RealMap(
                 config = config,
+                scope = scope,
                 onPositionChange = onMapPositionChange,
+                onLocationError = { locationError = it },
                 modifier = Modifier.weight(0.9f).fillMaxWidth().padding(horizontal = 16.dp),
             )
             MapAttribution()
+            LocationSearch(
+                onLocationSelected = { latitude, longitude ->
+                    onMapPositionChange(latitude, longitude)
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+            locationError?.let { MapMessage(it) }
             ControlPanel(
                 config = config,
                 status = status,
@@ -164,6 +185,16 @@ private fun LiveMapScreen(
             )
         }
     }
+}
+
+@Composable
+private fun MapMessage(message: String) {
+    Text(
+        text = message,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 3.dp),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+    )
 }
 
 @Composable

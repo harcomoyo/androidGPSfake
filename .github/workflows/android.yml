@@ -31,8 +31,35 @@ jobs:
       - name: Configure Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Restore stable QA signing key
+        id: signing-key
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/geopilot-qa.jks
+          key: geopilot-qa-signing-v1
+
+      - name: Create stable QA signing key
+        if: steps.signing-key.outputs.cache-hit != 'true'
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/geopilot-qa.jks" \
+            -storepass "$GEOPILOT_KEYSTORE_PASSWORD" \
+            -alias "$GEOPILOT_KEY_ALIAS" \
+            -keypass "$GEOPILOT_KEY_PASSWORD" \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Harcomoyo, OU=GeoPilot QA, O=GeoPilot, L=Jakarta, C=ID"
+        env:
+          GEOPILOT_KEYSTORE_PASSWORD: geopilot-qa-update-key
+          GEOPILOT_KEY_ALIAS: geopilot
+          GEOPILOT_KEY_PASSWORD: geopilot-qa-update-key
+
       - name: Verify and build
         run: ./gradlew lint test assembleDebug --stacktrace
+        env:
+          ORG_GRADLE_PROJECT_GEOPILOT_KEYSTORE_PATH: ${{ runner.temp }}/geopilot-qa.jks
+          ORG_GRADLE_PROJECT_GEOPILOT_KEYSTORE_PASSWORD: geopilot-qa-update-key
+          ORG_GRADLE_PROJECT_GEOPILOT_KEY_ALIAS: geopilot
+          ORG_GRADLE_PROJECT_GEOPILOT_KEY_PASSWORD: geopilot-qa-update-key
 
       - name: Generate checksum
         run: sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/app-debug.apk.sha256
