@@ -4,10 +4,13 @@ import android.os.Bundle
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
@@ -15,13 +18,19 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CenterFocusStrong
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -68,6 +78,21 @@ fun RealMap(
     var searchResults by remember { mutableStateOf<List<LocationSearchResult>>(emptyList()) }
     var searchError by remember { mutableStateOf<String?>(null) }
     var searching by remember { mutableStateOf(false) }
+    fun runSearch() {
+        if (searchQuery.isBlank() || searching) return
+        searching = true
+        searchError = null
+        searchResults = emptyList()
+        scope.launch {
+            searchService.search(searchQuery)
+                .onSuccess {
+                    searchResults = it
+                    if (it.isEmpty()) searchError = "Lokasi tidak ditemukan di Indonesia"
+                }
+                .onFailure { searchError = "Pencarian gagal. Periksa koneksi internet." }
+            searching = false
+        }
+    }
 
     DisposableEffect(lifecycleOwner, mapView) {
         val observer = LifecycleEventObserver { _, event ->
@@ -101,54 +126,107 @@ fun RealMap(
         )
         Column(
             modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = { Text("Cari lokasi di Indonesia") },
-                placeholder = { Text("Monas, Jakarta") },
-                leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                trailingIcon = {
-                    if (searching) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    }
-                },
-                shape = RoundedCornerShape(16.dp),
-                supportingText = searchError?.let { message -> { Text(message) } },
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onSearch = {
-                        if (searchQuery.isNotBlank() && !searching) {
-                            searching = true
-                            searchError = null
-                            scope.launch {
-                                searchService.search(searchQuery)
-                                    .onSuccess {
-                                        searchResults = it
-                                        if (it.isEmpty()) searchError = "Lokasi tidak ditemukan di Indonesia"
-                                    }
-                                    .onFailure { searchError = "Pencarian gagal. Periksa koneksi internet." }
-                                searching = false
-                            }
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
+                tonalElevation = 10.dp,
+                shadowElevation = 8.dp,
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        searchError = null
+                        if (it.isBlank()) searchResults = emptyList()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("Cari kota, alamat, atau tempat") },
+                    leadingIcon = { Icon(Icons.Outlined.Search, "Cari lokasi") },
+                    trailingIcon = {
+                        when {
+                            searching -> CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            searchQuery.isNotEmpty() -> IconButton(
+                                onClick = {
+                                    searchQuery = ""
+                                    searchResults = emptyList()
+                                    searchError = null
+                                },
+                            ) { Icon(Icons.Outlined.Close, "Hapus pencarian") }
                         }
                     },
-                ),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Search,
-                ),
-            )
+                    shape = RoundedCornerShape(20.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.Transparent,
+                        focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { runSearch() }),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Search,
+                    ),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Outlined.Map, null, modifier = Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(6.dp))
+                        Text("Street map", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (searchQuery.isNotBlank() && !searching) {
+                    Surface(
+                        modifier = Modifier.clickable { runSearch() },
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ) {
+                        Text(
+                            "Cari",
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
+            if (searchError != null) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.96f),
+                ) {
+                    Text(
+                        searchError.orEmpty(),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
             if (searchResults.isNotEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-                    tonalElevation = 8.dp,
+                    tonalElevation = 10.dp,
+                    shadowElevation = 8.dp,
                 ) {
                     Column {
-                        searchResults.forEach { result ->
-                            Text(
-                                text = result.name,
+                        searchResults.forEachIndexed { index, result ->
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -158,9 +236,41 @@ fun RealMap(
                                         controller.moveTo(result.latitude, result.longitude)
                                     }
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 2,
-                            )
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.LocationOn,
+                                        null,
+                                        modifier = Modifier.padding(8.dp).size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    )
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        result.name.substringBefore(','),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        result.name.substringAfter(',', "Indonesia").trim(),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                    )
+                                }
+                            }
+                            if (index < searchResults.lastIndex) {
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = 62.dp),
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+                                )
+                            }
                         }
                     }
                 }
